@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0f1115;
+  --color-bg-deep: #0b0d11;
+  --color-surface: #1c2128;
+  --color-surface-2: #161a21;
+  --color-input: #181b21;
+  --color-ink: #c9ccd3;
+  --color-ink-strong: #e8eaed;
+  --color-sub: #aeb4bf;
+  --color-muted: #7a8290;
+  --color-accent: #5fb8a3;
+  --color-accent-fg: #08120f;
+  --color-line: #262b34;
+  --color-danger: #c2554f;
+  --color-danger-bg: #1c1416;
+  --color-danger-border: #3a2326;
+  --color-danger-ink: #e0938c;
+}
+
+@theme inline {
+  --font-sans: var(--font-space-grotesk), -apple-system, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: .3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+body {
+  background-color: #0f1115;
+  color: #c9ccd3;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* highlight.js — override atom-one-dark to match Dark Pro palette */
+.hljs { background: transparent !important; color: #c9ccd3; }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section { color: #7fd4c1; }
+.hljs-string,
+.hljs-template-variable,
+.hljs-template-tag,
+.hljs-addition { color: #e0a55f; }
+.hljs-number { color: #b58df0; }
+.hljs-built_in,
+.hljs-type { color: #5fb8a3; }
+.hljs-title,
+.hljs-title\.function_,
+.hljs-title\.class_ { color: #aeb4bf; }
+.hljs-attr,
+.hljs-variable,
+.hljs-params { color: #c9ccd3; }
+.hljs-comment,
+.hljs-doctag { color: #565d6a; font-style: italic; }
+.hljs-punctuation,
+.hljs-operator { color: #7a8290; }
+.hljs-meta,
+.hljs-meta .hljs-keyword { color: #7fd4c1; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
