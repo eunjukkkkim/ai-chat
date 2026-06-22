@@ -11,7 +11,6 @@ LLM 응답은 OpenRouter API를 통해 받고, 채팅 기록은 Prisma + SQLite�
 key 설정 후 example에 있는 env를 복사하여 .env.local을 설정해줍니다.
 
 ```bash
-cp .env.example .env
 cp .env.example .env.local
 
 ```
