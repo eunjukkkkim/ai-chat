@@ -2,6 +2,7 @@ import { prisma } from '@/lib/server/prisma';
 import {
   OpenRouterApiError,
   getOpenRouterClientStatus,
+  getOpenRouterApiKey,
   getOpenRouterUserMessage,
   streamChatCompletion,
   toOpenRouterErrorResponse,
@@ -157,15 +158,6 @@ async function handleChat(body: ChatRequestBody, signal: AbortSignal) {
       { status },
     );
   }
-}
-
-function getOpenRouterApiKey() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not set');
-  }
-
-  return apiKey;
 }
 
 function parseChatRequestBody(body: unknown):

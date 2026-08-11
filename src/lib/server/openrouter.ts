@@ -4,6 +4,7 @@ const SYSTEM_PROMPT = '너는 한국어로 답변하는 assistant야.';
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export type OpenRouterErrorCode =
+  | 'missing_api_key'
   | 'invalid_prompt'
   | 'rate_limit_exceeded'
   | 'image_content_policy_violation'
@@ -117,6 +118,7 @@ export async function parseOpenRouterErrorResponse(response: Response) {
 }
 
 export function getOpenRouterClientStatus(error: OpenRouterApiError) {
+  if (error.code === 'missing_api_key') return 500;
   if (error.code === 'invalid_prompt') return 400;
   if (error.code === 'image_content_policy_violation') return 400;
   if (error.code === 'rate_limit_exceeded') return 429;
@@ -130,6 +132,10 @@ export function getOpenRouterClientStatus(error: OpenRouterApiError) {
 }
 
 export function getOpenRouterUserMessage(error: OpenRouterApiError) {
+  if (error.code === 'missing_api_key') {
+    return 'OpenRouter API 키가 설정되지 않았습니다. .env.local의 OPENROUTER_API_KEY를 확인해 주세요.';
+  }
+
   if (error.code === 'invalid_prompt') {
     return '요청 내용을 처리할 수 없습니다. 메시지를 짧게 줄이거나 내용을 수정해 주세요.';
   }
@@ -159,6 +165,19 @@ export function getOpenRouterUserMessage(error: OpenRouterApiError) {
   }
 
   return '응답 생성에 실패했습니다. 요청 내용을 확인한 뒤 다시 시도해 주세요.';
+}
+
+export function getOpenRouterApiKey() {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) {
+    throw new OpenRouterApiError({
+      status: 500,
+      code: 'missing_api_key',
+      message: 'OPENROUTER_API_KEY is not set',
+    });
+  }
+
+  return apiKey;
 }
 
 export function toOpenRouterErrorResponse(error: OpenRouterApiError) {
