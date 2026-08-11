@@ -1,7 +1,7 @@
 import {
   createOpenRouterSseState,
   parseOpenRouterSseChunk,
-} from '@/lib/server/openrouterSse';
+} from '@/lib/openrouterSse';
 import { prisma } from '@/lib/server/prisma';
 
 type AssistantFinalStatus = 'completed' | 'failed' | 'interrupted';

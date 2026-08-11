@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createOpenRouterSseState,
   parseOpenRouterSseChunk,
-} from "@/lib/server/openrouterSse";
+} from "@/lib/openrouterSse";
 import type { Conversation, Message, MessageStatus } from "@/types/chat";
 
 function generateId() {

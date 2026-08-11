@@ -1,2 +1,3 @@
-export const MODEL = 'openai/gpt-4o-mini';
-export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+export const DEFAULT_OPENROUTER_MODEL = 'openrouter/free';
+export const DISPLAY_OPENROUTER_MODEL =
+  process.env.NEXT_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL;

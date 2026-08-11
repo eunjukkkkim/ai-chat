@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { QueryProvider } from "@/components/QueryProvider";
 import "./globals.css";
 import "highlight.js/styles/atom-one-dark.css";
 
@@ -28,7 +29,9 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-bg text-ink font-sans">{children}</body>
+      <body className="min-h-full flex flex-col bg-bg text-ink font-sans">
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   );
 }

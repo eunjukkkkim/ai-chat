@@ -2,8 +2,8 @@ import type { LucideProps } from "lucide-react";
 import {
   ArrowUp,
   Check,
+  MessageCircle,
   Copy,
-  Hexagon,
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
@@ -57,7 +57,7 @@ export function SidebarCloseIcon(props: AppIconProps) {
 
 export function EmptyChatIcon(props: AppIconProps) {
   return (
-    <Hexagon size={24} strokeWidth={1.8} {...defaultIconProps} {...props} />
+    <MessageCircle size={24} strokeWidth={1.8} {...defaultIconProps} {...props} />
   );
 }
 

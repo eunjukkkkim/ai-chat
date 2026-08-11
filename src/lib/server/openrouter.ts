@@ -1,6 +1,7 @@
-import { MODEL, OPENROUTER_API_URL } from '@/constants';
+import { DEFAULT_OPENROUTER_MODEL } from '@/constants';
 
 const SYSTEM_PROMPT = '너는 한국어로 답변하는 assistant야.';
+const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export type OpenRouterErrorCode =
   | 'invalid_prompt'
@@ -56,14 +57,14 @@ export async function streamChatCompletion(
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<Response> {
-  const response = await fetch(OPENROUTER_API_URL, {
+  const response = await fetch(getOpenRouterChatCompletionsUrl(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: getOpenRouterModel(),
       messages: withSystemPrompt(messages),
       stream: true,
     }),
@@ -75,6 +76,17 @@ export async function streamChatCompletion(
   }
 
   return response;
+}
+
+function getOpenRouterModel() {
+  return process.env.OPENROUTER_MODEL?.trim() || DEFAULT_OPENROUTER_MODEL;
+}
+
+function getOpenRouterChatCompletionsUrl() {
+  const baseUrl =
+    process.env.OPENROUTER_BASE_URL?.trim() || DEFAULT_OPENROUTER_BASE_URL;
+
+  return `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 }
 
 function withSystemPrompt(messages: ChatMessage[]): OpenRouterMessage[] {

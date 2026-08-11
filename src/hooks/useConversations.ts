@@ -1,108 +1,196 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Conversation } from '@/types/chat';
 import { conversationApi } from '@/lib/conversationApi';
+import { queryKeys } from '@/lib/queryKeys';
+
+const EMPTY_CONVERSATIONS: Conversation[] = [];
+
+function sortConversations(conversations: Conversation[]) {
+  return [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function upsertConversation(
+  conversations: Conversation[] | undefined,
+  conversation: Conversation,
+) {
+  const current = conversations ?? [];
+  const next = current.some((item) => item.id === conversation.id)
+    ? current.map((item) => (item.id === conversation.id ? conversation : item))
+    : [conversation, ...current];
+
+  return sortConversations(next);
+}
 
 export function useConversations() {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-  const activeConversationRef = useRef<Conversation | null>(null);
-  const conversationsRef = useRef<Conversation[]>([]);
+  const queryClient = useQueryClient();
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(
+    null,
+  );
 
-  useEffect(() => {
-    activeConversationRef.current = activeConversation;
-  }, [activeConversation]);
+  const conversationsQuery = useQuery({
+    queryKey: queryKeys.conversations,
+    queryFn: conversationApi.listConversations,
+  });
 
-  useEffect(() => {
-    conversationsRef.current = conversations;
-  }, [conversations]);
+  const activeConversationQuery = useQuery({
+    queryKey: activeConversationId
+      ? queryKeys.conversation(activeConversationId)
+      : ['conversation', 'idle'],
+    queryFn: () => conversationApi.getConversation(activeConversationId ?? ''),
+    enabled: Boolean(activeConversationId),
+  });
 
-  useEffect(() => {
-    conversationApi.listConversations().then((list) => {
-      setConversations(list);
-    }).catch(() => {
-      setConversations([]);
-    }).finally(() => {
-      setIsLoadingConversations(false);
-    });
-  }, []);
+  const createConversationMutation = useMutation({
+    mutationFn: conversationApi.createConversation,
+    onSuccess: (conversation) => {
+      queryClient.setQueryData<Conversation[]>(
+        queryKeys.conversations,
+        (current) => upsertConversation(current, conversation),
+      );
+      queryClient.setQueryData(
+        queryKeys.conversation(conversation.id),
+        conversation,
+      );
+    },
+  });
 
-  const pruneEmptyActive = useCallback((currentActive: Conversation | null) => {
-    if (currentActive && currentActive.messages.length === 0) {
-      conversationApi.deleteConversation(currentActive.id).catch(() => {
-        // Ignore cleanup errors for empty draft conversations.
-      });
-      setConversations((prev) => prev.filter((c) => c.id !== currentActive.id));
-    }
-  }, []);
+  const deleteConversationMutation = useMutation({
+    mutationFn: conversationApi.deleteConversation,
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.conversations });
+      const previousConversations = queryClient.getQueryData<Conversation[]>(
+        queryKeys.conversations,
+      );
+
+      queryClient.setQueryData<Conversation[]>(
+        queryKeys.conversations,
+        (current) => (current ?? []).filter((conversation) => conversation.id !== id),
+      );
+      queryClient.removeQueries({ queryKey: queryKeys.conversation(id) });
+
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+      }
+
+      return { previousConversations };
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previousConversations) {
+        queryClient.setQueryData(
+          queryKeys.conversations,
+          context.previousConversations,
+        );
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.conversations });
+    },
+  });
+
+  const conversations = conversationsQuery.data ?? EMPTY_CONVERSATIONS;
+  const activeConversation = activeConversationQuery.data ?? null;
+
+  const pruneEmptyConversation = useCallback(
+    (conversation: Conversation | null) => {
+      if (!conversation || conversation.messages.length > 0) return;
+      deleteConversationMutation.mutate(conversation.id);
+    },
+    [deleteConversationMutation],
+  );
 
   const startNewChat = useCallback(async () => {
-    const emptyConversations = conversationsRef.current.filter(
+    const emptyConversations = conversations.filter(
       (conversation) => conversation.messages.length === 0,
     );
     const emptyConversation = emptyConversations[0];
 
     if (emptyConversation) {
-      const duplicateEmptyIds = emptyConversations.slice(1).map((conversation) => conversation.id);
+      const duplicateEmptyIds = emptyConversations
+        .slice(1)
+        .map((conversation) => conversation.id);
+
       duplicateEmptyIds.forEach((id) => {
-        conversationApi.deleteConversation(id).catch(() => {
-          // Ignore cleanup errors for duplicate empty draft conversations.
-        });
+        deleteConversationMutation.mutate(id);
       });
 
-      setActiveConversation(emptyConversation);
-      setConversations((prev) => [
+      setActiveConversationId(emptyConversation.id);
+      queryClient.setQueryData<Conversation[]>(
+        queryKeys.conversations,
+        (current) =>
+          upsertConversation(
+            (current ?? []).filter((item) => !duplicateEmptyIds.includes(item.id)),
+            emptyConversation,
+          ),
+      );
+      queryClient.setQueryData(
+        queryKeys.conversation(emptyConversation.id),
         emptyConversation,
-        ...prev.filter(
-          (c) => c.id !== emptyConversation.id && !duplicateEmptyIds.includes(c.id),
-        ),
-      ]);
+      );
       return emptyConversation;
     }
 
-    setActiveConversation(null);
-    const conv = await conversationApi.createConversation();
-    setActiveConversation(conv);
-    setConversations((prev) => [conv, ...prev.filter((c) => c.id !== conv.id)]);
-    return conv;
-  }, []);
-
-  const selectConversation = useCallback(async (id: string) => {
-    pruneEmptyActive(activeConversationRef.current);
-    const conv = await conversationApi.getConversation(id);
-    if (conv) setActiveConversation(conv);
-  }, [pruneEmptyActive]);
-
-  const updateConversation = useCallback((updated: Conversation) => {
-    setActiveConversation(updated);
-    setConversations((prev) => {
-      const index = prev.findIndex((c) => c.id === updated.id);
-      if (index >= 0) {
-        const next = [...prev];
-        next[index] = updated;
-        return next.sort((a, b) => b.updatedAt - a.updatedAt);
-      }
-      return [updated, ...prev];
-    });
-  }, []);
-
-  const deleteConversation = useCallback(async (id: string) => {
-    await conversationApi.deleteConversation(id);
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (activeConversationRef.current?.id === id) {
-      setActiveConversation(null);
-    }
-  }, []);
-
-  return {
+    const conversation = await createConversationMutation.mutateAsync();
+    setActiveConversationId(conversation.id);
+    return conversation;
+  }, [
     conversations,
-    isLoadingConversations,
-    activeConversation,
-    startNewChat,
-    selectConversation,
-    updateConversation,
-    deleteConversation,
-  };
+    createConversationMutation,
+    deleteConversationMutation,
+    queryClient,
+  ]);
+
+  const selectConversation = useCallback(
+    (id: string) => {
+      pruneEmptyConversation(activeConversation);
+      setActiveConversationId(id);
+    },
+    [activeConversation, pruneEmptyConversation],
+  );
+
+  const updateConversation = useCallback(
+    (updated: Conversation) => {
+      queryClient.setQueryData(queryKeys.conversation(updated.id), updated);
+      queryClient.setQueryData<Conversation[]>(
+        queryKeys.conversations,
+        (current) => upsertConversation(current, updated),
+      );
+    },
+    [queryClient],
+  );
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await deleteConversationMutation.mutateAsync(id);
+    },
+    [deleteConversationMutation],
+  );
+
+  const isLoadingConversations =
+    conversationsQuery.isLoading ||
+    createConversationMutation.isPending ||
+    deleteConversationMutation.isPending;
+
+  return useMemo(
+    () => ({
+      conversations,
+      isLoadingConversations,
+      activeConversation,
+      startNewChat,
+      selectConversation,
+      updateConversation,
+      deleteConversation,
+    }),
+    [
+      activeConversation,
+      conversations,
+      deleteConversation,
+      isLoadingConversations,
+      selectConversation,
+      startNewChat,
+      updateConversation,
+    ],
+  );
 }

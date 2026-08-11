@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { ChatSidebarItem } from "./ChatSidebarItem";
 import { NewChatButton } from "./NewChatButton";
 import { Spinner } from "@/components/ui/Spinner";
-import { MODEL } from "@/constants";
+import { DISPLAY_OPENROUTER_MODEL } from "@/constants";
 
 interface Props {
   conversations: Conversation[];
@@ -68,7 +68,7 @@ export function ChatSidebar({
       </div>
 
       <div className="px-4 py-[13px] border-t border-[#1b1f27] font-mono text-[11px] text-muted truncate">
-        {MODEL}
+        {DISPLAY_OPENROUTER_MODEL}
       </div>
     </aside>
   );

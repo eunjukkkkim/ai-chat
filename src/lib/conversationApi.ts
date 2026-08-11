@@ -63,18 +63,11 @@ export const conversationApi = {
   },
 
   async getConversation(id: string) {
-    const [conversationsResult, messagesResult] = await Promise.all([
-      requestJson<{ conversations: ApiConversation[] }>('/api/conversations'),
-      requestJson<{ messages: ApiMessage[] }>(`/api/conversations/${id}/messages`),
-    ]);
+    const { conversation } = await requestJson<{ conversation: ApiConversation }>(
+      `/api/conversations/${id}`,
+    );
 
-    const conversation = conversationsResult.conversations.find((item) => item.id === id);
-    if (!conversation) return null;
-
-    return toConversation({
-      ...conversation,
-      messages: messagesResult.messages,
-    });
+    return toConversation(conversation);
   },
 
   async createConversation() {

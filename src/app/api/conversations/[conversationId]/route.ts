@@ -6,6 +6,25 @@ type RouteParams = {
   }>;
 };
 
+export async function GET(_request: Request, { params }: RouteParams) {
+  const { conversationId } = await params;
+
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+  });
+
+  if (!conversation) {
+    return Response.json({ error: 'Conversation not found' }, { status: 404 });
+  }
+
+  return Response.json({ conversation });
+}
+
 export async function DELETE(_request: Request, { params }: RouteParams) {
   const { conversationId } = await params;
 
