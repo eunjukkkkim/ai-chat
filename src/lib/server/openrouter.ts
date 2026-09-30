@@ -1,4 +1,4 @@
-import { DEFAULT_OPENROUTER_MODEL } from '@/constants';
+import { DEFAULT_OPENROUTER_MODELS } from '@/constants';
 
 const SYSTEM_PROMPT = '너는 한국어로 답변하는 assistant야.';
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
@@ -58,6 +58,7 @@ export async function streamChatCompletion(
   apiKey: string,
   signal?: AbortSignal,
 ): Promise<Response> {
+  const models = getOpenRouterModels();
   const response = await fetch(getOpenRouterChatCompletionsUrl(), {
     method: 'POST',
     headers: {
@@ -65,7 +66,11 @@ export async function streamChatCompletion(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: getOpenRouterModel(),
+      model: models[0],
+      // Fallback order when the primary free model is rate-limited.
+      models,
+      // Skip thinking tokens so the first visible token arrives sooner.
+      reasoning: { enabled: false },
       messages: withSystemPrompt(messages),
       stream: true,
     }),
@@ -79,8 +84,12 @@ export async function streamChatCompletion(
   return response;
 }
 
-function getOpenRouterModel() {
-  return process.env.OPENROUTER_MODEL?.trim() || DEFAULT_OPENROUTER_MODEL;
+function getOpenRouterModels() {
+  const configured = process.env.OPENROUTER_MODEL?.split(',')
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  return configured?.length ? configured : DEFAULT_OPENROUTER_MODELS;
 }
 
 function getOpenRouterChatCompletionsUrl() {
